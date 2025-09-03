@@ -16,24 +16,21 @@ public class BerkeleyServer {
         ServerSocket serverSocket = new ServerSocket(port);
         System.out.println("[SERVIDOR] Aguardando " + numClientes + " clientes na porta " + port + "...");
 
-        // Aceitar clientes
         while (clients.size() < numClientes) {
             Socket client = serverSocket.accept();
             clients.add(client);
             System.out.println("[SERVIDOR] Cliente conectado: " + client.getRemoteSocketAddress());
         }
 
-        // Enviar TIME_REQUEST
         long serverTime = System.currentTimeMillis();
         for (Socket client : clients) {
             PrintWriter out = new PrintWriter(client.getOutputStream(), true);
             out.println("TIME_REQUEST:" + serverTime);
         }
 
-// Receber OFFSETS
         Map<Socket, Long> clientOffsets = new HashMap<>();
         List<Long> offsets = new ArrayList<>();
-        offsets.add(0L); // servidor
+        offsets.add(0L);
 
         for (Socket client : clients) {
             BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
@@ -47,18 +44,16 @@ public class BerkeleyServer {
             }
         }
 
-// Calcular média
         long avg = Math.round(offsets.stream().mapToDouble(Long::doubleValue).average().orElse(0.0));
         System.out.println("[SERVIDOR] Média dos offsets = " + avg);
 
-// Enviar ajustes
         for (Socket client : clients) {
             long off = clientOffsets.getOrDefault(client, 0L);
             long adjust = avg - off;
             PrintWriter out = new PrintWriter(client.getOutputStream(), true);
             out.println("ADJUST:" + adjust);
             System.out.println("[SERVIDOR] Enviado ADJUST=" + adjust);
-            client.close(); // fecha o cliente após enviar o ajuste
+            client.close();
         }
 
         serverSocket.close();
